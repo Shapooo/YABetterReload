@@ -32,7 +32,8 @@ namespace YABetterReload
 
         private static void UpdateCache()
         {
-            if (_cacheDirty) { return; }
+            if (!_cacheDirty) { return; }
+            Debug.Log("YABetterReload: cache updating...");
             ReloaderCore._ammoCountCache.Clear();
             ReloaderCore._ammoTypesByCaliberCache.Clear();
             ReloaderCore._ammoLocationsCache.Clear();
