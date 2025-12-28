@@ -130,17 +130,17 @@ namespace YABetterReload
                     int stackSize = item.StackCount > 0 ? item.StackCount : 0;
                     if (stackSize > 0)
                     {
-                            if (stackSize > remaining)
-                            {
-                                splitTasks.Add(item.Split(remaining));
-                                gatheredAmount += remaining;
-                            }
-                            else
-                            {
-                                item.Detach();
-                                result.Add(item);
-                                gatheredAmount += stackSize;
-                            }
+                        if (stackSize > remaining)
+                        {
+                            splitTasks.Add(item.Split(remaining));
+                            gatheredAmount += remaining;
+                        }
+                        else
+                        {
+                            item.Detach();
+                            result.Add(item);
+                            gatheredAmount += stackSize;
+                        }
 
                     }
                 }
@@ -186,6 +186,10 @@ namespace YABetterReload
         {
             if (item == null || ReloaderCore.IsGunItem(item))
                 yield break;
+            if (item.Slots == null)
+            {
+                yield break;
+            }
 
             foreach (Slot slot in item.Slots)
             {
