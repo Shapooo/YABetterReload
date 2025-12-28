@@ -33,7 +33,7 @@ namespace YABetterReload
             ReloaderCore._ammoCountCache.Clear();
             ReloaderCore._ammoTypesByCaliberCache.Clear();
             ReloaderCore._ammoLocationsCache.Clear();
-            foreach (Item ammo in ReloaderCore. GetAllAmmoItems())
+            foreach (Item ammo in ReloaderCore.GetAllAmmoItems())
             {
                 int ammoTypeId = ammo.TypeID;
                 int stackCount = ammo.StackCount <= 0 ? 0 : ammo.StackCount;
@@ -97,6 +97,13 @@ namespace YABetterReload
             return false;
         }
 
+        internal static Dictionary<int, BulletTypeInfo> GetCachedAmmoTypesByCaliber(string caliber)
+        {
+            ReloaderCore.UpdateCache();
+            Dictionary<int, BulletTypeInfo> dictionary;
+            return ReloaderCore._ammoTypesByCaliberCache.TryGetValue(caliber, out dictionary) ? new Dictionary<int, BulletTypeInfo>(dictionary) : new Dictionary<int, BulletTypeInfo>();
+        }
+
         internal static int GetCachedAmmoCount(int ammoTypeId)
         {
             ReloaderCore.UpdateCache();
@@ -108,13 +115,10 @@ namespace YABetterReload
         {
             if (inventory != null)
             {
-                HashSet<Item> processedItems = new HashSet<Item>();
                 foreach (Item item in inventory)
                 {
                     if (item == null) continue;
                     yield return item;
-                    if (processedItems.Add(item))
-                        Debug.LogWarning("Dup item {}", item);
                     if (!ReloaderCore.IsGunItem(item) && item.Slots != null && item.Slots.Count > 0)
                     {
                         foreach (Item slotItem in ReloaderCore.TraverseSlot(item))
@@ -148,15 +152,12 @@ namespace YABetterReload
 
         private static IEnumerable<Item> GetAllAmmoItems()
         {
-            HashSet<Item> processedItems = new HashSet<Item>();
             foreach (Inventory inventory in ReloaderCore.AllInventory())
             {
                 foreach (Item item in ReloaderCore.TraverseInventory(inventory))
                 {
                     if (item != null && IsAmmoItem(item))
                     {
-                        if (processedItems.Add(item))
-                            Debug.LogWarning("Duplicate item {}", item);
                         yield return item;
                     }
                 }
@@ -173,8 +174,7 @@ namespace YABetterReload
 
         internal static bool IsAmmoItem(Item item)
         {
-            int itemTypeId = item.TypeID;
-            return IsAmmoItem(itemTypeId);
+            return item != null && item.GetBool("IsBullet");
         }
 
         internal static bool IsAmmoItem(int itemTypeId)
