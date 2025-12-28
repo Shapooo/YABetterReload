@@ -30,6 +30,9 @@
     <Reference Include="0Harmony">
       <HintPath>lib\0Harmony.dll</HintPath>
     </Reference>
+    <Reference Include="$(DuckovPath)$(SubPath)UniTask.dll">
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>
