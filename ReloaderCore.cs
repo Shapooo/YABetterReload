@@ -1,4 +1,5 @@
-﻿using Duckov.Utilities;
+﻿using Cysharp.Threading.Tasks;
+using Duckov.Utilities;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using System;
@@ -21,10 +22,12 @@ namespace YABetterReload
         }
         internal static Inventory PetInventory => PetProxy.PetInventory;
 
-        internal static bool IsPlayerInventory(Inventory inventory)
+        static ReloaderCore()
         {
-            return inventory != null &&
-                (inventory == ReloaderCore.PlayerInventory || inventory == ReloaderCore.PetInventory);
+            if (ReloaderCore.PlayerInventory != null)
+                ReloaderCore.PlayerInventory.onContentChanged += new Action<Inventory, int>(ReloaderCore.OnInventoryChanged);
+            if (ReloaderCore.PetInventory != null)
+                ReloaderCore.PetInventory.onContentChanged += new Action<Inventory, int>(ReloaderCore.OnInventoryChanged);
         }
 
         private static void UpdateCache()
@@ -58,14 +61,6 @@ namespace YABetterReload
                 }
             }
             _cacheDirty = false;
-        }
-
-        static ReloaderCore()
-        {
-            if (ReloaderCore.PlayerInventory != null)
-                ReloaderCore.PlayerInventory.onContentChanged += new Action<Inventory, int>(ReloaderCore.OnInventoryChanged);
-            if (ReloaderCore.PetInventory != null)
-                ReloaderCore.PetInventory.onContentChanged += new Action<Inventory, int>(ReloaderCore.OnInventoryChanged);
         }
 
         private static void OnInventoryChanged(Inventory inventory, int slot)
@@ -109,6 +104,61 @@ namespace YABetterReload
             ReloaderCore.UpdateCache();
             int num;
             return ReloaderCore._ammoCountCache.TryGetValue(ammoTypeId, out num) ? num : 0;
+        }
+
+        internal static async UniTask<List<Item>> GetAmmosOfAmount(
+          Inventory inventory,
+          int ammoTypeId,
+          int requiredAmount)
+        {
+            if (!ReloaderCore.IsPlayerInventory(inventory))
+                return new List<Item>();
+            ReloaderCore.UpdateCache();
+            List<Item> result = new List<Item>();
+            List<Item> ammoLocations;
+            if (requiredAmount <= 0 || !ReloaderCore._ammoLocationsCache.TryGetValue(ammoTypeId, out ammoLocations))
+                return result;
+            int gatheredAmount = 0;
+            List<UniTask<Item>> splitTasks = new List<UniTask<Item>>();
+            foreach (Item obj in ammoLocations)
+            {
+                Item item = obj;
+                if (item != null && gatheredAmount < requiredAmount)
+                {
+                    int remaining = requiredAmount - gatheredAmount;
+                    int stackSize = item.StackCount > 0 ? item.StackCount : 0;
+                    if (stackSize > 0)
+                    {
+                            if (stackSize > remaining)
+                            {
+                                splitTasks.Add(item.Split(remaining));
+                                gatheredAmount += remaining;
+                            }
+                            else
+                            {
+                                item.Detach();
+                                result.Add(item);
+                                gatheredAmount += stackSize;
+                            }
+
+                    }
+                }
+                else
+                    break;
+            }
+            if (splitTasks.Count > 0)
+            {
+                Item[] splitResults = await UniTask.WhenAll<Item>(splitTasks);
+                Item[] objArray = splitResults;
+                for (int index = 0; index < objArray.Length; ++index)
+                {
+                    Item splitItem = objArray[index];
+                    if (splitItem != null)
+                        result.Add(splitItem);
+                }
+            }
+            ReloaderCore._cacheDirty = true;
+            return result;
         }
 
         private static IEnumerable<Item> TraverseInventory(Inventory inventory)
@@ -170,6 +220,12 @@ namespace YABetterReload
                 yield return ReloaderCore.PlayerInventory;
             if (ReloaderCore.PetInventory != null)
                 yield return ReloaderCore.PetInventory;
+        }
+
+        internal static bool IsPlayerInventory(Inventory inventory)
+        {
+            return inventory != null &&
+                (inventory == ReloaderCore.PlayerInventory || inventory == ReloaderCore.PetInventory);
         }
 
         internal static bool IsAmmoItem(Item item)
