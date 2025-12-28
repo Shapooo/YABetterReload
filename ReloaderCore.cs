@@ -97,6 +97,13 @@ namespace YABetterReload
             return false;
         }
 
+        internal static int GetCachedAmmoCount(int ammoTypeId)
+        {
+            ReloaderCore.UpdateCache();
+            int num;
+            return ReloaderCore._ammoCountCache.TryGetValue(ammoTypeId, out num) ? num : 0;
+        }
+
         private static IEnumerable<Item> TraverseInventory(Inventory inventory)
         {
             if (inventory != null)
@@ -167,6 +174,11 @@ namespace YABetterReload
         internal static bool IsAmmoItem(Item item)
         {
             int itemTypeId = item.TypeID;
+            return IsAmmoItem(itemTypeId);
+        }
+
+        internal static bool IsAmmoItem(int itemTypeId)
+        {
             ItemMetaData metaData = ItemAssetsCollection.GetMetaData(itemTypeId);
             if (metaData.tags == null)
                 return false;
