@@ -15,6 +15,8 @@ namespace YABetterReload
         private static readonly ConcurrentDictionary<int, int> _ammoCountCache = new ConcurrentDictionary<int, int>();
         private static readonly ConcurrentDictionary<string, Dictionary<int, BulletTypeInfo>> _ammoTypesByCaliberCache = new ConcurrentDictionary<string, Dictionary<int, BulletTypeInfo>>();
         private static readonly ConcurrentDictionary<int, List<Item>> _ammoLocationsCache = new ConcurrentDictionary<int, List<Item>>();
+        private static float _lastCacheUpdateTime = 0.0f;
+        private const float CACHE_UPDATE_INTERVAL = 1f;
         private static bool _cacheDirty = true;
         internal static Inventory? PlayerInventory
         {
@@ -32,7 +34,8 @@ namespace YABetterReload
 
         private static void UpdateCache()
         {
-            if (!_cacheDirty) { return; }
+            float time = Time.time;
+            if (!_cacheDirty && time - _lastCacheUpdateTime < CACHE_UPDATE_INTERVAL) { return; }
             Debug.Log("YABetterReload: cache updating...");
             ReloaderCore._ammoCountCache.Clear();
             ReloaderCore._ammoTypesByCaliberCache.Clear();
