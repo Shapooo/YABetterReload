@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace YABetterReload
 {
-    internal class ReloaderCore
+    internal static class ReloaderCore
     {
         private static readonly ConcurrentDictionary<int, int> _ammoCountCache = new ConcurrentDictionary<int, int>();
         private static readonly ConcurrentDictionary<string, Dictionary<int, BulletTypeInfo>> _ammoTypesByCaliberCache = new ConcurrentDictionary<string, Dictionary<int, BulletTypeInfo>>();
@@ -27,11 +27,10 @@ namespace YABetterReload
         public static void SubscribeEvents()
         {
             UnsubscribeEvents();
-            Debug.Log("YABetterReload: Subscribe inventory chagne events");
+            Debug.Log("YABetterReload: Subscribe inventory change events");
 
             if (PlayerInventory != null)
                 PlayerInventory.onContentChanged += OnInventoryChanged;
-            Debug.Log("YABetterReload: PlayerInventory chagne event added");
             if (PetInventory != null)
                 PetInventory.onContentChanged += OnInventoryChanged;
         }
@@ -48,39 +47,38 @@ namespace YABetterReload
 
         private static void OnInventoryChanged(Inventory inventory, int slot)
         {
-            ReloaderCore._cacheDirty = true;
+            _cacheDirty = true;
         }
 
         private static void UpdateCache()
         {
             float time = Time.time;
             if (!_cacheDirty && time - _lastCacheUpdateTime < CACHE_UPDATE_INTERVAL) { return; }
-            Debug.Log("YABetterReload: cache updating...");
-            ReloaderCore._ammoCountCache.Clear();
-            ReloaderCore._ammoTypesByCaliberCache.Clear();
-            ReloaderCore._ammoLocationsCache.Clear();
-            foreach (Item ammo in ReloaderCore.GetAllAmmoItems())
+            _ammoCountCache.Clear();
+            _ammoTypesByCaliberCache.Clear();
+            _ammoLocationsCache.Clear();
+            foreach (Item ammo in GetAllAmmoItems())
             {
                 int ammoTypeId = ammo.TypeID;
                 int stackCount = ammo.StackCount <= 0 ? 0 : ammo.StackCount;
-                ReloaderCore._ammoCountCache.AddOrUpdate(ammoTypeId, stackCount, (Func<int, int, int>)((key, oldValue) => oldValue + stackCount));
+                _ammoCountCache.AddOrUpdate(ammoTypeId, stackCount, (Func<int, int, int>)((key, oldValue) => oldValue + stackCount));
 
-                if (!ReloaderCore._ammoLocationsCache.ContainsKey(ammoTypeId))
-                    ReloaderCore._ammoLocationsCache[ammoTypeId] = new List<Item>();
-                ReloaderCore._ammoLocationsCache[ammoTypeId].Add(ammo);
+                if (!_ammoLocationsCache.ContainsKey(ammoTypeId))
+                    _ammoLocationsCache[ammoTypeId] = new List<Item>();
+                _ammoLocationsCache[ammoTypeId].Add(ammo);
 
                 string? key1 = ammo.Constants?.GetString("Caliber".GetHashCode(), null);
                 if (!string.IsNullOrEmpty(key1))
                 {
-                    if (!ReloaderCore._ammoTypesByCaliberCache.ContainsKey(key1))
-                        ReloaderCore._ammoTypesByCaliberCache[key1] = new Dictionary<int, BulletTypeInfo>();
-                    if (!ReloaderCore._ammoTypesByCaliberCache[key1].ContainsKey(ammoTypeId))
-                        ReloaderCore._ammoTypesByCaliberCache[key1][ammoTypeId] = new BulletTypeInfo()
+                    if (!_ammoTypesByCaliberCache.ContainsKey(key1))
+                        _ammoTypesByCaliberCache[key1] = new Dictionary<int, BulletTypeInfo>();
+                    if (!_ammoTypesByCaliberCache[key1].ContainsKey(ammoTypeId))
+                        _ammoTypesByCaliberCache[key1][ammoTypeId] = new BulletTypeInfo()
                         {
                             bulletTypeID = ammoTypeId,
                             count = 0
                         };
-                    ReloaderCore._ammoTypesByCaliberCache[key1][ammoTypeId].count += stackCount;
+                    _ammoTypesByCaliberCache[key1][ammoTypeId].count += stackCount;
                 }
             }
             _cacheDirty = false;
@@ -95,13 +93,13 @@ namespace YABetterReload
             if (string.IsNullOrEmpty(key))
                 return false;
 
-            ReloaderCore.UpdateCache();
+            UpdateCache();
             Dictionary<int, BulletTypeInfo> source;
-            if (ReloaderCore._ammoTypesByCaliberCache.TryGetValue(key, out source))
+            if (_ammoTypesByCaliberCache.TryGetValue(key, out source))
             {
                 KeyValuePair<int, BulletTypeInfo> keyValuePair = source.FirstOrDefault<KeyValuePair<int, BulletTypeInfo>>();
                 List<Item> objList;
-                if (keyValuePair.Value != null && ReloaderCore._ammoLocationsCache.TryGetValue(keyValuePair.Key, out objList) && objList.Count > 0)
+                if (keyValuePair.Value != null && _ammoLocationsCache.TryGetValue(keyValuePair.Key, out objList) && objList.Count > 0)
                 {
                     ammoItem = objList[0];
                     return true;
@@ -112,16 +110,16 @@ namespace YABetterReload
 
         internal static Dictionary<int, BulletTypeInfo> GetCachedAmmoTypesByCaliber(string caliber)
         {
-            ReloaderCore.UpdateCache();
+            UpdateCache();
             Dictionary<int, BulletTypeInfo> dictionary;
-            return ReloaderCore._ammoTypesByCaliberCache.TryGetValue(caliber, out dictionary) ? new Dictionary<int, BulletTypeInfo>(dictionary) : new Dictionary<int, BulletTypeInfo>();
+            return _ammoTypesByCaliberCache.TryGetValue(caliber, out dictionary) ? new Dictionary<int, BulletTypeInfo>(dictionary) : new Dictionary<int, BulletTypeInfo>();
         }
 
         internal static int GetCachedAmmoCount(int ammoTypeId)
         {
-            ReloaderCore.UpdateCache();
+            UpdateCache();
             int num;
-            return ReloaderCore._ammoCountCache.TryGetValue(ammoTypeId, out num) ? num : 0;
+            return _ammoCountCache.TryGetValue(ammoTypeId, out num) ? num : 0;
         }
 
         internal static async UniTask<List<Item>> GetAmmosOfAmount(
@@ -129,12 +127,12 @@ namespace YABetterReload
           int ammoTypeId,
           int requiredAmount)
         {
-            if (!ReloaderCore.IsPlayerInventory(inventory))
+            if (!IsPlayerInventory(inventory))
                 return new List<Item>();
-            ReloaderCore.UpdateCache();
+            UpdateCache();
             List<Item> result = new List<Item>();
             List<Item> ammoLocations;
-            if (requiredAmount <= 0 || !ReloaderCore._ammoLocationsCache.TryGetValue(ammoTypeId, out ammoLocations))
+            if (requiredAmount <= 0 || !_ammoLocationsCache.TryGetValue(ammoTypeId, out ammoLocations))
                 return result;
             int gatheredAmount = 0;
             List<UniTask<Item>> splitTasks = new List<UniTask<Item>>();
@@ -175,46 +173,40 @@ namespace YABetterReload
                         result.Add(splitItem);
                 }
             }
-            ReloaderCore._cacheDirty = true;
+            _cacheDirty = true;
             return result;
         }
 
-        private static IEnumerable<Item> TraverseInventory(Inventory inventory)
+        private static IEnumerable<Item> TraverseAmmoInInventory(Inventory inventory)
         {
             if (inventory != null)
             {
                 foreach (Item item in inventory)
                 {
                     if (item == null) continue;
-                    yield return item;
-                    if (!ReloaderCore.IsGunItem(item) && item.Slots != null && item.Slots.Count > 0)
+                    if (IsAmmoItem(item)) yield return item;
+                    foreach (Item slotItem in TraverseAmmoInSlot(item))
                     {
-                        foreach (Item slotItem in ReloaderCore.TraverseSlot(item))
-                        {
-                            if (slotItem != null)
-                                yield return slotItem;
-                        }
+                        if (slotItem != null)
+                            yield return slotItem;
                     }
+
                 }
             }
         }
 
-        private static IEnumerable<Item> TraverseSlot(Item item)
+        private static IEnumerable<Item> TraverseAmmoInSlot(Item item)
         {
-            if (item == null || ReloaderCore.IsGunItem(item))
+            if (item == null || IsGunItem(item) || item.Slots == null || item.Slots.Count <= 0)
                 yield break;
-            if (item.Slots == null)
-            {
-                yield break;
-            }
 
             foreach (Slot slot in item.Slots)
             {
                 Item slotItem = slot.Content;
                 if (slotItem != null)
                 {
-                    yield return slotItem;
-                    foreach (Item item1 in ReloaderCore.TraverseSlot(slotItem))
+                    if (IsAmmoItem(slotItem)) yield return slotItem;
+                    foreach (Item item1 in TraverseAmmoInSlot(slotItem))
                     {
                         yield return item1;
                     }
@@ -224,30 +216,28 @@ namespace YABetterReload
 
         private static IEnumerable<Item> GetAllAmmoItems()
         {
-            foreach (Inventory inventory in ReloaderCore.AllInventory())
+            foreach (Inventory inventory in AllInventory())
             {
-                foreach (Item item in ReloaderCore.TraverseInventory(inventory))
+                foreach (Item item in TraverseAmmoInInventory(inventory))
                 {
-                    if (item != null && IsAmmoItem(item))
-                    {
                         yield return item;
-                    }
+
                 }
             }
         }
 
         private static IEnumerable<Inventory> AllInventory()
         {
-            if (ReloaderCore.PlayerInventory != null)
-                yield return ReloaderCore.PlayerInventory;
-            if (ReloaderCore.PetInventory != null)
-                yield return ReloaderCore.PetInventory;
+            if (PlayerInventory != null)
+                yield return PlayerInventory;
+            if (PetInventory != null)
+                yield return PetInventory;
         }
 
         internal static bool IsPlayerInventory(Inventory inventory)
         {
             return inventory != null &&
-                (inventory == ReloaderCore.PlayerInventory || inventory == ReloaderCore.PetInventory);
+                (inventory == PlayerInventory || inventory == PetInventory);
         }
 
         internal static bool IsAmmoItem(Item item)
