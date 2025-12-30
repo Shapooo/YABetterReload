@@ -18,7 +18,7 @@ namespace YABetterReload
         public void OnEnable()
         {
             Debug.Log("YABetterReload: OnEnable - Enabling mod and applying patches.");
-            
+
             // Null check for Harmony instance to prevent re-initialization if OnEnable is called multiple times
             if (_harmony != null)
             {
@@ -39,12 +39,13 @@ namespace YABetterReload
                 {
                     Debug.Log($"YABetterReload: Patched -> {patchedMethod.FullDescription()}");
                 }
+
+                ReloaderCore.SubscribeEvents();
             }
             catch (Exception ex)
             {
                 Debug.LogError($"YABetterReload: Error applying Harmony patches: {ex}");
-                // Ensure harmony instance is null if patching failed
-                _harmony = null; 
+                Cleanup();
             }
         }
 
@@ -52,16 +53,17 @@ namespace YABetterReload
         {
             Debug.Log("YABetterReload: OnDisable - Disabling mod and removing patches.");
 
+            Cleanup();
+        }
+
+        private void Cleanup()
+        {
             // Unpatch all methods and release the Harmony instance
+            ReloaderCore.UnsubscribeEvents();
             if (_harmony != null)
             {
                 _harmony.UnpatchAll(HARMONY_ID);
                 _harmony = null;
-                Debug.Log("YABetterReload: All patches have been removed.");
-            }
-            else
-            {
-                Debug.LogWarning("YABetterReload: Harmony instance was null. No patches to remove?");
             }
         }
     }

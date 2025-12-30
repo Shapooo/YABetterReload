@@ -24,12 +24,31 @@ namespace YABetterReload
         }
         internal static Inventory PetInventory => PetProxy.PetInventory;
 
-        static ReloaderCore()
+        public static void SubscribeEvents()
         {
-            if (ReloaderCore.PlayerInventory != null)
-                ReloaderCore.PlayerInventory.onContentChanged += new Action<Inventory, int>(ReloaderCore.OnInventoryChanged);
-            if (ReloaderCore.PetInventory != null)
-                ReloaderCore.PetInventory.onContentChanged += new Action<Inventory, int>(ReloaderCore.OnInventoryChanged);
+            UnsubscribeEvents();
+            Debug.Log("YABetterReload: Subscribe inventory chagne events");
+
+            if (PlayerInventory != null)
+                PlayerInventory.onContentChanged += OnInventoryChanged;
+            Debug.Log("YABetterReload: PlayerInventory chagne event added");
+            if (PetInventory != null)
+                PetInventory.onContentChanged += OnInventoryChanged;
+        }
+
+        public static void UnsubscribeEvents()
+        {
+            Debug.Log("YABetterReload: Unsubscribe inventory change events");
+            if (PlayerInventory != null)
+                PlayerInventory.onContentChanged -= OnInventoryChanged;
+
+            if (PetInventory != null)
+                PetInventory.onContentChanged -= OnInventoryChanged;
+        }
+
+        private static void OnInventoryChanged(Inventory inventory, int slot)
+        {
+            ReloaderCore._cacheDirty = true;
         }
 
         private static void UpdateCache()
@@ -65,11 +84,6 @@ namespace YABetterReload
                 }
             }
             _cacheDirty = false;
-        }
-
-        private static void OnInventoryChanged(Inventory inventory, int slot)
-        {
-            ReloaderCore._cacheDirty = true;
         }
 
         internal static bool LocateCompatibleAmmo(ItemSetting_Gun gunConfig, out Item? ammoItem)
