@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsMac>false</IsMac>
     <IsMac Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))'">true</IsMac>
@@ -27,9 +28,6 @@
     <Reference Include="$(DuckovPath)$(SubPath)Unity*">
       <Private>False</Private>
     </Reference>
-    <Reference Include="0Harmony">
-      <HintPath>lib\0Harmony.dll</HintPath>
-    </Reference>
     <Reference Include="$(DuckovPath)$(SubPath)UniTask.dll">
       <Private>False</Private>
     </Reference>
@@ -43,6 +41,9 @@
 
   <ItemGroup>
     <None Update="info.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="lib/0Harmony.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
